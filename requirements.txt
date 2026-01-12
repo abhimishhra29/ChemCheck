@@ -3,3 +3,5 @@ uvicorn
 streamlit
 python-multipart
 requests
+python-dotenv
+langgraph
