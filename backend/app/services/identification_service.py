@@ -1,16 +1,21 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import HTTPException, UploadFile
 
-from app.agents.ocr_agent import OCRAgent, OCRResult, merge_ocr_results
+from app.agents.ocr_agent import OCRAgent, OCRResult
 from app.models import IdentifyResponse, InputMode, OCRData, SDSResult
 from app.utils.file_utils import to_file_info, validate_image
-from app.workflow import run_sds_flow_from_ocr
+from app.utils.ocr_utils import merge_ocr_results
+from app.workflow.utils import format_output
 
 
 class IdentificationService:
+    def __init__(self, *, ocr_agent: OCRAgent, sds_graph: Any):
+        self.ocr_agent = ocr_agent
+        self.sds_graph = sds_graph
+
     async def process(
         self,
         front_image: Optional[UploadFile],
@@ -27,7 +32,8 @@ class IdentificationService:
         input_mode = self._get_input_mode(front_image, back_image)
 
         ocr_result = await self._run_ocr(front_image=front_image, back_image=back_image)
-        sds_result = run_sds_flow_from_ocr(ocr_result)
+        sds_state = await self.sds_graph.ainvoke({"ocr": ocr_result})
+        sds_result = format_output(sds_state)
 
         return IdentifyResponse(
             message="Processed",
@@ -55,21 +61,22 @@ class IdentificationService:
         front_image: Optional[UploadFile],
         back_image: Optional[UploadFile],
     ) -> OCRResult:
-        agent = OCRAgent()
+        agent = self.ocr_agent
         front_result = None
         back_result = None
 
         with TemporaryDirectory() as tmpdir:
             if front_image:
                 front_path = await _save_upload(front_image, tmpdir, "front")
-                front_result = agent.extract_details(front_path)
+                front_result = await agent.extract_details(front_path)
             if back_image:
                 back_path = await _save_upload(back_image, tmpdir, "back")
-                back_result = agent.extract_details(back_path)
+                back_result = await agent.extract_details(back_path)
 
         if front_result and back_result:
             return merge_ocr_results(front_result, back_result)
         return front_result or back_result  # type: ignore[return-value]
+
 
 
 async def _save_upload(file: UploadFile, tmpdir: str, stem: str) -> str:
@@ -91,5 +98,3 @@ def _to_ocr_data(result: OCRResult) -> OCRData:
     )
 
 
-def get_identification_service() -> IdentificationService:
-    return IdentificationService()

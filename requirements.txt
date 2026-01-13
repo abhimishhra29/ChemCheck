@@ -7,3 +7,4 @@ python-dotenv
 langgraph
 mcp
 pymupdf
+httpx

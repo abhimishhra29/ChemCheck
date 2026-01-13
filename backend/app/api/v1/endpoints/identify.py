@@ -2,11 +2,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, UploadFile
 
+from app.dependencies import get_identification_service
 from app.models import IdentifyResponse
-from app.services.identification_service import (
-    IdentificationService,
-    get_identification_service,
-)
+from app.services.identification_service import IdentificationService
 
 router = APIRouter()
 
