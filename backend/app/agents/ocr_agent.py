@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -166,3 +167,96 @@ class OCRAgent:
         if not isinstance(obj, dict):
             raise ValueError(f"Expected JSON object, got {type(obj)}")
         return obj
+
+
+CAS_PATTERN = re.compile(r"\b\d{2,7}-\d{2}-\d\b")
+
+
+def merge_ocr_results(primary: OCRResult, secondary: OCRResult) -> OCRResult:
+    return OCRResult(
+        full_text=_merge_full_text(primary.full_text, secondary.full_text),
+        product_name=_choose_text(primary.product_name, secondary.product_name),
+        product_code=_choose_product_code(primary.product_code, secondary.product_code),
+        cas_number=_choose_cas_number(primary.cas_number, secondary.cas_number),
+        manufacturer_name=_choose_text(
+            primary.manufacturer_name, secondary.manufacturer_name
+        ),
+        description=_choose_text(primary.description, secondary.description),
+    )
+
+
+def _merge_full_text(text_a: str, text_b: str) -> str:
+    lines = []
+    seen = set()
+    for line in (text_a or "").splitlines() + (text_b or "").splitlines():
+        normalized = re.sub(r"\s+", " ", line.strip()).lower()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        lines.append(line.strip())
+    return "\n".join(lines).strip()
+
+
+def _choose_text(primary: Optional[str], secondary: Optional[str]) -> Optional[str]:
+    p = (primary or "").strip()
+    s = (secondary or "").strip()
+    if not p:
+        return s or None
+    if not s:
+        return p or None
+    if p.lower() == s.lower():
+        return p
+    if p.lower() in s.lower():
+        return s
+    if s.lower() in p.lower():
+        return p
+    return p if len(p) >= len(s) else s
+
+
+def _choose_cas_number(primary: Optional[str], secondary: Optional[str]) -> Optional[str]:
+    p = _extract_cas(primary)
+    s = _extract_cas(secondary)
+    if p and s:
+        if p == s:
+            return p
+        if CAS_PATTERN.fullmatch(p) and not CAS_PATTERN.fullmatch(s):
+            return p
+        if CAS_PATTERN.fullmatch(s) and not CAS_PATTERN.fullmatch(p):
+            return s
+        return p
+    return p or s
+
+
+def _extract_cas(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    match = CAS_PATTERN.search(value)
+    return match.group(0) if match else value.strip() or None
+
+
+def _choose_product_code(primary: Optional[str], secondary: Optional[str]) -> Optional[str]:
+    p = (primary or "").strip()
+    s = (secondary or "").strip()
+    if not p:
+        return s or None
+    if not s:
+        return p or None
+    if p.lower() == s.lower():
+        return p
+    if p.lower() in s.lower():
+        return s
+    if s.lower() in p.lower():
+        return p
+    p_score = _product_code_score(p)
+    s_score = _product_code_score(s)
+    if s_score > p_score:
+        return s
+    return p
+
+
+def _product_code_score(value: str) -> int:
+    normalized = re.sub(r"[^a-z0-9]", "", value.lower())
+    score = len(normalized)
+    if re.search(r"\d", value):
+        score += 2
+    return score
