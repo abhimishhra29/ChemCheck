@@ -18,6 +18,7 @@ load_dotenv()
 class OCRPayload(BaseModel):
     full_text: StrictStr
     product_name: Optional[StrictStr] = None
+    product_code: Optional[StrictStr] = None
     cas_number: Optional[StrictStr] = None
     manufacturer_name: Optional[StrictStr] = None
     description: Optional[StrictStr] = None
@@ -27,6 +28,7 @@ class OCRPayload(BaseModel):
 class OCRResult:
     full_text: str
     product_name: Optional[str] = None
+    product_code: Optional[str] = None
     cas_number: Optional[str] = None
     manufacturer_name: Optional[str] = None
     description: Optional[str] = None
@@ -65,11 +67,12 @@ class OCRAgent:
             "You are an OCR agent. Extract ALL visible text exactly as shown, "
             "preserving order as best as possible. Then, if possible, identify:\n"
             "- Product Name\n"
+            "- product_code: any SKU/catalog/ID/code (often alphanumeric; may include hyphens/slashes).\n"
             "- CAS Number (if available)\n"
             "- Manufacturer Name\n"
             "- Short chemical or product description\n\n"
-            "Return ONLY JSON with keys: full_text, product_name, cas_number, "
-            "manufacturer_name, description. Use null when unknown. "
+            "Return ONLY JSON with keys: full_text, product_name, product_code, "
+            "cas_number, manufacturer_name, description. Use null when unknown. "
             "Do not fabricate."
         )
 
@@ -119,6 +122,7 @@ class OCRAgent:
         return OCRResult(
             full_text=validated.full_text.strip(),
             product_name=clean(validated.product_name),
+            product_code=clean(validated.product_code),
             cas_number=clean(validated.cas_number),
             manufacturer_name=clean(validated.manufacturer_name),
             description=clean(validated.description),
