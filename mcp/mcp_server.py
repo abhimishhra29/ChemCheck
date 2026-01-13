@@ -159,6 +159,7 @@ def get_sds_url(
     cas_number: Optional[str] = None,
     product_name: Optional[str] = None,
     product_code: Optional[str] = None,
+    exclude_urls: Optional[list[str]] = None,
 ) -> dict:
     """
     Find an SDS URL for a product, restricted to the manufacturer's domain.
@@ -170,7 +171,9 @@ def get_sds_url(
         product_code: Optional product code (SKU/catalog/ID).
 
     Returns:
-        A dict with sds_url, query, and manufacturer_domain.
+        A dict with sds_url, query, and manufacturer_domain. If provided,
+        exclude_urls will be skipped when selecting the best candidate.
+        candidates provides ranked results for debugging.
     """
     if not manufacturer_url or not manufacturer_url.strip():
         raise ValueError("manufacturer_url is required")
@@ -190,22 +193,38 @@ def get_sds_url(
         f'site:{manufacturer_domain} ({terms_query}) '
         '("SDS" OR "Safety Data Sheet") filetype:pdf'
     )
-    results = tavily_search(query)
+    results = tavily_search(query, max_results=10)
 
     tokens = re.findall(r"[a-z0-9]+", " ".join(terms).lower())
-    best, best_score = None, -1
+    candidates = []
     for result in results:
         url = result.get("url", "")
         if not is_same_domain(url, manufacturer_domain):
             continue
         score = score_sds_result(result, tokens)
-        if score > best_score:
-            best, best_score = url, score
+        candidates.append(
+            {
+                "url": url,
+                "title": result.get("title"),
+                "score": score,
+            }
+        )
+
+    candidates.sort(key=lambda item: item["score"], reverse=True)
+    excluded = {((u or "").rstrip("/")) for u in (exclude_urls or []) if u}
+    best = None
+    for candidate in candidates:
+        candidate_url = (candidate.get("url") or "").rstrip("/")
+        if candidate_url and candidate_url in excluded:
+            continue
+        best = candidate.get("url")
+        break
 
     return {
         "sds_url": best,
         "query": query,
         "manufacturer_domain": manufacturer_domain,
+        "candidates": candidates[:10],
     }
 
 

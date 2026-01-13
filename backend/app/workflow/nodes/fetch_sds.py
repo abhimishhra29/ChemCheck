@@ -22,6 +22,7 @@ def fetch_sds_node(state: SDSFlowState) -> dict:
 
     attempts = list(state.get("sds_attempts", []))
     flagged = set(state.get("flagged_urls", []))
+    flagged_normalized = {url.rstrip("/") for url in flagged if url}
 
     search_order = [
         ("cas_number", ocr.cas_number),
@@ -38,6 +39,7 @@ def fetch_sds_node(state: SDSFlowState) -> dict:
             "cas_number": value if field_name == "cas_number" else None,
             "product_code": value if field_name == "product_code" else None,
             "product_name": value if field_name == "product_name" else None,
+            "exclude_urls": sorted(flagged_normalized),
         }
         result = get_sds_url(**params)
         sds_url = result.get("sds_url")
@@ -48,7 +50,7 @@ def fetch_sds_node(state: SDSFlowState) -> dict:
             "query": last_query,
             "sds_url": sds_url,
         }
-        if sds_url and sds_url in flagged:
+        if sds_url and sds_url.rstrip("/") in flagged_normalized:
             attempt["skipped"] = "flagged"
             attempts.append(attempt)
             continue
