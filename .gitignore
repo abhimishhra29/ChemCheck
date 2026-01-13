@@ -21,3 +21,4 @@ dist/
 *.swo
 *.tmp
 .streamlit/secrets.toml
+.env
