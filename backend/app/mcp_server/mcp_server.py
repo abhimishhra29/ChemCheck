@@ -7,9 +7,9 @@ from mcp.server.fastmcp import FastMCP
 
 # The MCP server acts as a client to the backend's shared services.
 # This demonstrates reusability and separation of concerns.
-# Note: This introduces a dependency from `mcp` to `backend`.
-from backend.app.clients.tavily_client import TavilyClient
-from backend.app.services.search_service import SearchService
+# Note: This introduces a dependency from `app.mcp_server` to `app.services`.
+from app.services.search_service import SearchService
+from app.mcp_server.tavily_client import TavilyClient
 
 # --- Server and Client Initialization ---
 

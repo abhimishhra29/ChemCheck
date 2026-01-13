@@ -3,15 +3,15 @@ from __future__ import annotations
 from typing import Iterable, Optional
 from urllib.parse import urlparse
 
-from app.clients.tavily_client import TavilyClient
-from app.core.constants import (
+from app.utils.file_utils import extract_domain, is_au_domain, is_same_domain, normalized_tokens
+from app.mcp_server.constants import (
     AU_TLDS,
     BAD_DOMAINS,
     CORP_STOPWORDS,
     INTENT_QUERIES,
     SDS_KEYWORDS,
 )
-from app.utils.file_utils import extract_domain, is_au_domain, is_same_domain, normalized_tokens
+from app.mcp_server.tavily_client import TavilyClient
 
 
 class SearchService:

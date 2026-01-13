@@ -67,7 +67,11 @@ class TavilyClient:
             "include_images": False,
             "include_raw_content": False,
         }
-        resp = await self.client.post(TAVILY_SEARCH_URL, json=payload)
+        resp = await self.client.post(
+            TAVILY_SEARCH_URL,
+            json=payload,
+            timeout=DEFAULT_TIMEOUT_S,
+        )
 
         if not resp.is_success:
             raise RuntimeError(

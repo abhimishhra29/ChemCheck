@@ -5,11 +5,11 @@ from fastapi import FastAPI
 
 from app.agents.ocr_agent import OCRAgent
 from app.api.v1.api import api_router
-from app.clients.tavily_client import TavilyClient
 from app.core.config import settings
 from app.services.search_service import SearchService
 from app.services.validation_service import ValidationService
 from app.workflow.chemcheck import build_sds_graph
+from app.mcp_server.tavily_client import TavilyClient
 
 
 @asynccontextmanager
